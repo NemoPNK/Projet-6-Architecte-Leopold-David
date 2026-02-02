@@ -133,13 +133,13 @@ fetchCategories()
                         })
                             .then(response => {
                                 if (response.ok) {
-                                    // 1) Supprime dans la modale
+                                    // Supprime dans la modale
                                     figure.remove();
 
-                                    // 2) Supprime dans la mémoire
+                                    // upprime dans la mémoire
                                     allWorks = allWorks.filter(w => String(w.id) !== String(work.id));
 
-                                    // 3) Supprime dans la galerie principale (sans reload)
+                                    // Supprime dans la galerie principale
                                     const activeBtn = document.querySelector('.filter button.active');
                                     const activeCat = activeBtn ? activeBtn.dataset.category : "all";
 
@@ -186,8 +186,6 @@ fetchCategories()
     }
 
     // ajout option cat
-
-    // pas refaire le call api //
 
     async function loadCategoriesInModalSelect() {
         const select = document.getElementById("cat-modale");
@@ -364,19 +362,15 @@ fetchCategories()
                 formError.style.display = "none";
             }
 
-            // sécurité (au cas où)
+            // securite (au cas ou)
             if (!imageFile || !title || !categoryId) {
                 if (formError) {
-                    formError.textContent = "Merci de remplir les 3 champs (image, titre, catégorie).";
+                    formError.textContent = "Les 3 champs doivent être rempli";
                     formError.style.display = "block";
                 }
                 updateValidateButtonState();
                 return;
             }
-
-            // UI: désactive le bouton pendant l'envoi
-            validateBtn.disabled = true;
-            validateBtn.style.cursor = "not-allowed";
 
             try {
                 const formData = new FormData();
@@ -392,16 +386,18 @@ fetchCategories()
                     body: formData,
                 });
 
-                if (!response.ok) {
-                    throw new Error("Erreur lors de l'ajout");
-                }
+                const apiResponse = await response.json();
 
-                const newWork = await response.json();
+                console.log(apiResponse);
 
-                // 1) Mets à jour la liste en mémoire
+                console.log("Reponse API :", apiResponse);
+
+                const newWork = apiResponse;
+
+                // Mets à jour la liste en memoire
                 allWorks.push(newWork);
 
-                // 2) Mets à jour la galerie principale selon le filtre actif
+                // Mets à jour la galerie principale selon le filtre actif
                 const activeBtn = document.querySelector(".filter button.active");
                 const activeCat = activeBtn ? activeBtn.dataset.category : "all";
 
@@ -414,10 +410,10 @@ fetchCategories()
                     filterGallery(filtered);
                 }
 
-                // 3) Mets à jour la galerie de la modale
+                // Mets à jour la galerie de la modale
                 loadModalGallery();
 
-                // 4) Reset + retour vue galerie modale
+                // Reset + retour vue galerie modale
                 resetAddPhotoForm();
                 updateValidateButtonState();
 
