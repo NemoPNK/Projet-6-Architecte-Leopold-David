@@ -4,9 +4,9 @@ const filt = document.querySelector(".filter");
 
 if (token) {
     const editmode = document.querySelector(".editmode");
-    if (editmode) editmode.style.display = "flex";
+    if (editmode) editmode.classList.add("is-visible-flex");
 
-    if (filt) filt.style.display = "none";
+    if (filt) filt.classList.add("is-hidden");
 
     const loginLink = document.querySelector('nav li[onclick*="login.html"]');
     if (loginLink) {
@@ -26,6 +26,28 @@ if (token) {
 }
 
 let allWorks = [];
+let allCategories = [];
+
+// Fetch "universels" avec cache : on ne fetch qu'une seule fois (sauf force=true)
+async function getWorks(force = false) {
+    if (!force && Array.isArray(allWorks) && allWorks.length) return allWorks;
+
+    const res = await fetch("http://localhost:5678/api/works");
+    if (!res.ok) throw new Error("Erreur API works");
+
+    allWorks = await res.json();
+    return allWorks;
+}
+
+async function getCategories(force = false) {
+    if (!force && Array.isArray(allCategories) && allCategories.length) return allCategories;
+
+    const res = await fetch("http://localhost:5678/api/categories");
+    if (!res.ok) throw new Error("Erreur API catégories");
+
+    allCategories = await res.json();
+    return allCategories;
+}
 
 function filterGallery(works) {
     gallery.innerHTML = "";
@@ -44,25 +66,22 @@ function filterGallery(works) {
     });
 }
 
-fetch("http://localhost:5678/api/works")
-    .then((response) => response.json())
-    .then((data) => {
-        allWorks = data;
+// Chargement initial des works (une seule fois)
+(async () => {
+    try {
+        await getWorks();
         filterGallery(allWorks);
-    })
-    .catch((err) => console.error("Erreur fetch works :", err));
+    } catch (err) {
+        console.error("Erreur fetch works :", err);
+    }
+})();
 
-async function fetchCategories() {
-    const response = await fetch("http://localhost:5678/api/categories");
-    if (!response.ok) throw new Error("Erreur API catégories");
-    return await response.json();
-}
-
-fetchCategories()
+getCategories()
     .then(categories => {
         const newButton = document.createElement("button");
         newButton.textContent = "Tous";
         newButton.dataset.category = "all";
+        newButton.classList.add("active");
         filt.appendChild(newButton);
 
         categories.forEach(cat => {
@@ -88,6 +107,8 @@ fetchCategories()
                 }
             });
         });
+        // Pour être sûr que la gallery s'affiche même si les works arrivent après les catégories
+        filterGallery(allWorks);
     })
     .catch(err => console.error(err));
 
@@ -98,9 +119,14 @@ fetchCategories()
     const btnClose = document.getElementById('modale-close');
     const opener = document.querySelector('.editproject');
 
-    function openModal() {
+    async function openModal() {
         modal.classList.add('open');
-        loadModalGallery();
+        try {
+            await getWorks();
+            loadModalGallery();
+        } catch (err) {
+            console.error("Erreur fetch works :", err);
+        }
         document.body.classList.add('modal-open');
     }
 
@@ -109,60 +135,56 @@ fetchCategories()
         if (!modalGallery) return;
         modalGallery.innerHTML = '';
 
-        fetch('http://localhost:5678/api/works')
-            .then(response => response.json())
-            .then(data => {
-                data.forEach(work => {
-                    const figure = document.createElement('figure');
-                    figure.classList.add('modal-figure');
+        allWorks.forEach(work => {
+            const figure = document.createElement('figure');
+            figure.classList.add('modal-figure');
 
-                    const img = document.createElement('img');
-                    img.src = work.imageUrl;
-                    img.alt = work.title;
+            const img = document.createElement('img');
+            img.src = work.imageUrl;
+            img.alt = work.title;
 
-                    const del = document.createElement('i');
-                    del.classList.add('fa-solid', 'fa-trash-can');
-                    del.addEventListener('click', (event) => {
-                        event.stopPropagation();
-                        event.preventDefault();
-                        fetch(`http://localhost:5678/api/works/${work.id}`, {
-                            method: "DELETE",
-                            headers: {
-                                "Authorization": `Bearer ${token}`,
+            const del = document.createElement('i');
+            del.classList.add('fa-solid', 'fa-trash-can');
+            del.addEventListener('click', (event) => {
+                event.stopPropagation();
+                event.preventDefault();
+                fetch(`http://localhost:5678/api/works/${work.id}`, {
+                    method: "DELETE",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                    }
+                })
+                    .then(response => {
+                        if (response.ok) {
+                            // Supprime dans la modale
+                            figure.remove();
+
+                            // upprime dans la mémoire
+                            allWorks = allWorks.filter(w => String(w.id) !== String(work.id));
+
+                            // Supprime dans la galerie principale
+                            const activeBtn = document.querySelector('.filter button.active');
+                            const activeCat = activeBtn ? activeBtn.dataset.category : "all";
+
+                            if (activeCat === "all") {
+                                filterGallery(allWorks);
+                            } else {
+                                const filtered = allWorks.filter(
+                                    w => String(w.categoryId) === String(activeCat)
+                                );
+                                filterGallery(filtered);
                             }
-                        })
-                            .then(response => {
-                                if (response.ok) {
-                                    // Supprime dans la modale
-                                    figure.remove();
-
-                                    // upprime dans la mémoire
-                                    allWorks = allWorks.filter(w => String(w.id) !== String(work.id));
-
-                                    // Supprime dans la galerie principale
-                                    const activeBtn = document.querySelector('.filter button.active');
-                                    const activeCat = activeBtn ? activeBtn.dataset.category : "all";
-
-                                    if (activeCat === "all") {
-                                        filterGallery(allWorks);
-                                    } else {
-                                        const filtered = allWorks.filter(
-                                            w => String(w.categoryId) === String(activeCat)
-                                        );
-                                        filterGallery(filtered);
-                                    }
-                                } else {
-                                    console.error("Erreur suppression");
-                                }
-                            })
-                            .catch(err => console.error("Erreur fetch DELETE :", err));
-                    });
-
-                    figure.appendChild(img);
-                    figure.appendChild(del);
-                    modalGallery.appendChild(figure);
-                });
+                        } else {
+                            console.error("Erreur suppression");
+                        }
+                    })
+                    .catch(err => console.error("Erreur fetch DELETE :", err));
             });
+
+            figure.appendChild(img);
+            figure.appendChild(del);
+            modalGallery.appendChild(figure);
+        });
     }
 
     function closeModal() {
@@ -193,7 +215,7 @@ fetchCategories()
         if (select.dataset.loaded === "true") return;
 
         try {
-            const categories = await fetchCategories(); // 👈 réutilisation
+            const categories = await getCategories(); // 👈 cache
 
             select.innerHTML = "";
             const defaultOpt = document.createElement("option");
@@ -235,6 +257,7 @@ fetchCategories()
         if (addImageDiv) {
             const span = addImageDiv.querySelector("span");
             const p = addImageDiv.querySelector("p");
+            const label = addImageDiv.querySelector("label.custom-file-btn");
 
             const preview = addImageDiv.querySelector("img.preview-img");
             if (preview) preview.remove();
@@ -244,16 +267,16 @@ fetchCategories()
                 delete addImageDiv.dataset.previewUrl;
             }
 
-            if (span) span.style.display = "";
-            if (p) p.style.display = "";
-            if (fileInput) fileInput.style.display = "";
+            if (span) span.classList.remove("is-hidden");
+            if (p) p.classList.remove("is-hidden");
+            if (label) label.classList.remove("is-hidden");
             if (fileInput) fileInput.value = "";
         }
 
         const formError = document.getElementById("formError");
         if (formError) {
             formError.textContent = "";
-            formError.style.display = "none";
+            formError.classList.add("is-hidden");
         }
     }
 
@@ -276,8 +299,8 @@ fetchCategories()
         const isValid = hasImage && hasTitle && hasCategory;
 
         validateBtn.disabled = !isValid;
-        validateBtn.style.backgroundColor = isValid ? "" : "#A7A7A7";
-        validateBtn.style.cursor = isValid ? "pointer" : "not-allowed";
+        validateBtn.classList.toggle("btn-disabled", !isValid);
+        validateBtn.classList.toggle("cursor-not-allowed", !isValid);
     }
 
     const addBtn = document.getElementById("modale-add");
@@ -292,11 +315,11 @@ fetchCategories()
             event.stopPropagation();
 
             resetAddPhotoForm();
-            if (modaleImg) modaleImg.style.display = "none";
-            if (modaleTitle) modaleTitle.style.display = "none";
-            if (modaleInputHandle) modaleInputHandle.style.display = "none";
+            if (modaleImg) modaleImg.classList.add("is-hidden");
+            if (modaleTitle) modaleTitle.classList.add("is-hidden");
+            if (modaleInputHandle) modaleInputHandle.classList.add("is-hidden");
 
-            if (modaleAdd) modaleAdd.style.display = "flex";
+            if (modaleAdd) modaleAdd.classList.add("is-visible-flex");
             loadCategoriesInModalSelect();
             updateValidateButtonState();
         });
@@ -311,11 +334,11 @@ fetchCategories()
 
             resetAddPhotoForm();
             updateValidateButtonState();
-            if (modaleAdd) modaleAdd.style.display = "none";
+            if (modaleAdd) modaleAdd.classList.remove("is-visible-flex");
 
-            if (modaleImg) modaleImg.style.display = "";
-            if (modaleTitle) modaleTitle.style.display = "";
-            if (modaleInputHandle) modaleInputHandle.style.display = "";
+            if (modaleImg) modaleImg.classList.remove("is-hidden");
+            if (modaleTitle) modaleTitle.classList.remove("is-hidden");
+            if (modaleInputHandle) modaleInputHandle.classList.remove("is-hidden");
         });
     }
     document.addEventListener("input", (event) => {
@@ -359,14 +382,14 @@ fetchCategories()
             // reset erreur
             if (formError) {
                 formError.textContent = "";
-                formError.style.display = "none";
+                formError.classList.add("is-hidden");
             }
 
             // securite (au cas ou)
             if (!imageFile || !title || !categoryId) {
                 if (formError) {
                     formError.textContent = "Les 3 champs doivent être rempli";
-                    formError.style.display = "block";
+                    formError.classList.remove("is-hidden");
                 }
                 updateValidateButtonState();
                 return;
@@ -417,15 +440,17 @@ fetchCategories()
                 resetAddPhotoForm();
                 updateValidateButtonState();
 
-                if (modaleAdd) modaleAdd.style.display = "none";
-                if (modaleImg) modaleImg.style.display = "";
-                if (modaleTitle) modaleTitle.style.display = "";
-                if (modaleInputHandle) modaleInputHandle.style.display = "";
+                if (modaleAdd) modaleAdd.classList.remove("is-visible-flex");
+                if (modaleImg) modaleImg.classList.remove("is-hidden");
+                if (modaleTitle) modaleTitle.classList.remove("is-hidden");
+                if (modaleInputHandle) modaleInputHandle.classList.remove("is-hidden");
+
+                closeModal();
             } catch (err) {
                 console.error(err);
                 if (formError) {
                     formError.textContent = err.message || "Erreur lors de l'ajout.";
-                    formError.style.display = "block";
+                    formError.classList.remove("is-hidden");
                 }
             } finally {
                 updateValidateButtonState();
@@ -451,9 +476,10 @@ document.addEventListener("change", (event) => {
 
     const span = addImageDiv.querySelector("span");
     const p = addImageDiv.querySelector("p");
-    if (span) span.style.display = "none";
-    if (p) p.style.display = "none";
-    input.style.display = "none";
+    const label = addImageDiv.querySelector("label.custom-file-btn");
+    if (span) span.classList.add("is-hidden");
+    if (p) p.classList.add("is-hidden");
+    if (label) label.classList.add("is-hidden");
 
     const existingImg = addImageDiv.querySelector("img.preview-img");
     if (existingImg) existingImg.remove();

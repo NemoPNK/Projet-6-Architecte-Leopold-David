@@ -29,7 +29,8 @@
 				<p>Ajout photo</p>
 				<div class="add-image">
 					<span><i class="fa-regular fa-image"></i></span>
-					<input type="file" value="+ Ajouter photo">
+					<input type="file" id="image-input" accept="image/*">
+					<label for="image-input" class="custom-file-btn">+ Ajouter photo</label>
 					<p>jpg, png : 4mo max</p>
 				</div>
 				<div class="title">
@@ -41,11 +42,14 @@
 					<select name="categorie" id="cat-modale">
 
 					</select>
+					<i class="fa-solid fa-angle-down"></i>
 				</div>
 				<div>
 
 				</div>
-				<input id="add-photo-validate" type="submit" value="Valider">
+				<div class="modale-add-btn">
+					<input id="add-photo-validate" type="submit" value="Valider">
+				</div>
 			</div>
 		</div>
 	</div>
