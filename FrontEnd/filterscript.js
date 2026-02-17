@@ -2,6 +2,8 @@ const token = localStorage.getItem("token");
 const gallery = document.querySelector(".gallery");
 const filt = document.querySelector(".filter");
 
+// verif du token pour edit mode
+
 if (token) {
     const editmode = document.querySelector(".editmode");
     if (editmode) editmode.classList.add("is-visible-flex");
@@ -25,10 +27,11 @@ if (token) {
     }
 }
 
+// 1 seul fetch pour chaque
+
 let allWorks = [];
 let allCategories = [];
 
-// Fetch "universels" avec cache : on ne fetch qu'une seule fois (sauf force=true)
 async function getWorks(force = false) {
     if (!force && Array.isArray(allWorks) && allWorks.length) return allWorks;
 
@@ -49,6 +52,8 @@ async function getCategories(force = false) {
     return allCategories;
 }
 
+// Affichage de la gallerie
+
 function filterGallery(works) {
     gallery.innerHTML = "";
     works.forEach(work => {
@@ -66,7 +71,6 @@ function filterGallery(works) {
     });
 }
 
-// Chargement initial des works (une seule fois)
 (async () => {
     try {
         await getWorks();
@@ -75,6 +79,8 @@ function filterGallery(works) {
         console.error("Erreur fetch works :", err);
     }
 })();
+
+// Bouton categorie
 
 getCategories()
     .then(categories => {
@@ -107,11 +113,12 @@ getCategories()
                 }
             });
         });
-        // Pour être sûr que la gallery s'affiche même si les works arrivent après les catégories
+
         filterGallery(allWorks);
     })
     .catch(err => console.error(err));
 
+    // ouverture de la modale
 
 (() => {
     const modal = document.querySelector('.modale');
@@ -156,13 +163,11 @@ getCategories()
                 })
                     .then(response => {
                         if (response.ok) {
-                            // Supprime dans la modale
+
                             figure.remove();
 
-                            // upprime dans la mémoire
                             allWorks = allWorks.filter(w => String(w.id) !== String(work.id));
 
-                            // Supprime dans la galerie principale
                             const activeBtn = document.querySelector('.filter button.active');
                             const activeCat = activeBtn ? activeBtn.dataset.category : "all";
 
@@ -186,6 +191,8 @@ getCategories()
             modalGallery.appendChild(figure);
         });
     }
+
+// fermeture de la modale
 
     function closeModal() {
         modal.classList.remove('open');
@@ -215,7 +222,7 @@ getCategories()
         if (select.dataset.loaded === "true") return;
 
         try {
-            const categories = await getCategories(); // 👈 cache
+            const categories = await getCategories();
 
             select.innerHTML = "";
             const defaultOpt = document.createElement("option");
@@ -280,7 +287,7 @@ getCategories()
         }
     }
 
-    // condition validation (bouton gris)
+    // condition validation
 
     function updateValidateButtonState() {
         const modaleAdd = document.querySelector(".modale-add");
@@ -385,7 +392,7 @@ getCategories()
                 formError.classList.add("is-hidden");
             }
 
-            // securite (au cas ou)
+
             if (!imageFile || !title || !categoryId) {
                 if (formError) {
                     formError.textContent = "Les 3 champs doivent être rempli";
