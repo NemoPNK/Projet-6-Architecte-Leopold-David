@@ -1,7 +1,3 @@
-// modaleadd.js
-// Ajout d'une image depuis la modale (POST /api/works)
-// - Click sur "Valider" => submit du form (même si ce n'est pas un bouton submit)
-// - Submit => envoi FormData + dispatch "workAdded" pour que filterscript.js mette à jour l'UI
 
 (() => {
     function initModaleAdd() {
@@ -13,7 +9,7 @@
             return;
         }
 
-        // Champs (alignés avec ton HTML)
+        // Champs 
         const fileInput = modaleAdd.querySelector('.add-image input[type="file"]') || form.querySelector('input[type="file"]');
         const titleInput = modaleAdd.querySelector('.title input[type="text"]') || form.querySelector('input[type="text"]');
         const categorySelect = document.getElementById("cat-modale") || form.querySelector("select");
@@ -32,11 +28,10 @@
             formError.textContent = message;
             formError.style.display = "block";
         };
-
-        // 1) CLICK sur Valider => force le submit du form
+        
         if (validateBtn) {
             validateBtn.addEventListener("click", (event) => {
-                // si disabled (géré par filterscript.js) => rien
+
                 if (validateBtn.disabled) return;
 
                 event.preventDefault();
@@ -50,7 +45,6 @@
             });
         }
 
-        // 2) SUBMIT => POST
         form.addEventListener("submit", async (event) => {
             event.preventDefault();
             clearError();
@@ -61,7 +55,6 @@
             const title = titleInput ? titleInput.value.trim() : "";
             const category = categorySelect ? categorySelect.value : "";
 
-            // Sécurité : champs obligatoires
             if (!imageFile || !title || !category) {
                 showError("Merci de remplir les 3 champs (image, titre, catégorie). ");
                 return;
@@ -92,10 +85,8 @@
 
                 const newWork = await response.json();
 
-                // Liaison avec filterscript.js (mise à jour UI)
                 document.dispatchEvent(new CustomEvent("workAdded", { detail: newWork }));
 
-                // Reset formulaire (preview reset côté filterscript si tu l'appelles)
                 form.reset();
             } catch (error) {
                 console.error(error);
@@ -104,7 +95,6 @@
         });
     }
 
-    // Important: attendre que le DOM existe
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", initModaleAdd);
     } else {
