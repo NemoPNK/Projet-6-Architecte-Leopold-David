@@ -10,7 +10,7 @@ if (token) {
 
     if (filt) filt.classList.add("is-hidden");
 
-    const loginLink = document.querySelector('nav li[onclick*="login.html"]');
+    const loginLink = document.querySelector('.href-login');
     if (loginLink) {
         loginLink.textContent = "logout";
         loginLink.onclick = () => {
